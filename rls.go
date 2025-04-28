@@ -38,10 +38,10 @@ type Release struct {
 	Month int
 	Day   int
 
-	Series  int
-	Episode int
-	Version string
-	Disc    string
+	Series   int
+	Episodes []int
+	Version  string
+	Disc     string
 
 	Codec    []string
 	HDR      []string
@@ -226,7 +226,7 @@ func (tag Tag) Info() *taginfo.Taginfo {
 func (tag Tag) SingleEp() bool {
 	if tag.typ.Is(TagTypeSeries) {
 		s, e := tag.Series()
-		return s == 0 && e != 0 && tag.v[1] == "" && tag.v[0] == tag.v[2]
+		return s == 0 && len(e) != 0 && tag.v[1] == "" && tag.v[0] == tag.v[2]
 	}
 	return false
 }
@@ -309,11 +309,15 @@ func (tag Tag) Normalize() string {
 		}
 		return strconv.Itoa(year)
 	case TagTypeSeries:
-		series, episode := tag.Series()
-		if episode != 0 {
-			return fmt.Sprintf("S%02dE%02d", series, episode)
+		series, episodes := tag.Series()
+		switch len(episodes) {
+		case 0:
+			return fmt.Sprintf("S%02d", series)
+		case 1:
+			return fmt.Sprintf("S%02dE%02d", series, episodes[0])
+		default:
+			return fmt.Sprintf("S%02dE%02dE%02d", series, episodes[0], episodes[1])
 		}
-		return fmt.Sprintf("S%02d", series)
 	case TagTypeVersion:
 		return tag.Version()
 	case TagTypeDisc:
@@ -475,10 +479,23 @@ func (tag Tag) Date() (int, int, int) {
 }
 
 // Series normalizes the series value.
-func (tag Tag) Series() (int, int) {
+func (tag Tag) Series() (int, []int) {
 	series, _ := strconv.Atoi(tag.v[1])
-	episode, _ := strconv.Atoi(tag.v[2])
-	return series, episode
+
+	episodeStr := tag.v[2]
+	var episodes []int
+	if episodeStr != "" {
+		parts := strings.FieldsFunc(episodeStr, func(r rune) bool {
+			return r == 'E' || r == 'e'
+		})
+		for _, part := range parts {
+			if num, err := strconv.Atoi(part); err == nil && num > 0 {
+				episodes = append(episodes, num)
+			}
+		}
+	}
+
+	return series, episodes
 }
 
 // Version normalizes the version value.
@@ -785,7 +802,7 @@ func Compare(a, b Release) int {
 		compareInt(a.Month, b.Month),
 		compareInt(a.Day, b.Day),
 		compareInt(a.Series, b.Series),
-		compareInt(a.Episode, b.Episode),
+		compareIntSlice(a.Episodes, b.Episodes),
 		compareTitle(a.Subtitle, b.Subtitle),
 		compareTitle(a.Alt, b.Alt),
 		compareIntString(a.Resolution, b.Resolution),
@@ -809,6 +826,27 @@ func compareInt(a, b int) func() int {
 			return -1
 		case b < a:
 			return 1
+		}
+		return 0
+	}
+}
+
+func compareIntSlice(a, b []int) func() int {
+	return func() int {
+		lenA, lenB := len(a), len(b)
+		if lenA < lenB {
+			return -1 // a is shorter
+		}
+		if lenA > lenB {
+			return 1 // b is shorter
+		}
+		for k, _ := range a {
+			if a[k] < b[k] {
+				return -1
+			}
+			if a[k] > b[k] {
+				return 1
+			}
 		}
 		return 0
 	}
