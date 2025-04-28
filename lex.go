@@ -257,28 +257,13 @@ func NewSeriesLexer(strs ...string) Lexer {
 				}
 				var tags []Tag
 				if len(series) != 0 || len(episodeStr) != 0 {
-					tagMatchBytes := s // Start with the full matched bytes for the tag
 					if len(version) != 0 {
-						// If version exists, remove it from the main series tag bytes
-						if bytes.HasSuffix(tagMatchBytes, version) {
-							tagMatchBytes = bytes.TrimSuffix(tagMatchBytes, version)
-							// Potentially remove trailing delimiter before version as well
-							if len(tagMatchBytes) > 0 && bytes.ContainsAny(tagMatchBytes[len(tagMatchBytes)-1:], "-._ ") {
-								tagMatchBytes = tagMatchBytes[:len(tagMatchBytes)-1]
-							}
-						}
+						s = bytes.TrimSuffix(s, version)
 					}
 					if len(disc) != 0 {
-						// If disc exists, remove it from the main series tag bytes
-						if bytes.HasSuffix(tagMatchBytes, disc) {
-							tagMatchBytes = bytes.TrimSuffix(tagMatchBytes, disc)
-							// Potentially remove trailing delimiter before disc as well
-							if len(tagMatchBytes) > 0 && bytes.ContainsAny(tagMatchBytes[len(tagMatchBytes)-1:], "-._ ") {
-								tagMatchBytes = tagMatchBytes[:len(tagMatchBytes)-1]
-							}
-						}
+						s = bytes.TrimSuffix(s, disc)
 					}
-					tags = append(tags, NewTag(TagTypeSeries, nil, tagMatchBytes, series, episodeStr))
+					tags = append(tags, NewTag(TagTypeSeries, nil, s, series, episodeStr))
 				}
 				if len(version) != 0 {
 					tags = append(tags, NewTag(TagTypeVersion, nil, version, version))
