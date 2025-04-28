@@ -835,10 +835,10 @@ func compareIntSlice(a, b []int) func() int {
 	return func() int {
 		lenA, lenB := len(a), len(b)
 		if lenA < lenB {
-			return -1 // a is shorter
+			return -1
 		}
 		if lenA > lenB {
-			return 1 // b is shorter
+			return 1
 		}
 		for k, _ := range a {
 			if a[k] < b[k] {
